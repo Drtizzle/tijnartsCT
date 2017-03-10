@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class InstantiateFloor : MonoBehaviour {
 
+	public bool floorCreated = false;
 	public bool pathFound = false;
 	
 	public List<Tile> tileList = new List<Tile> ();
@@ -20,7 +21,7 @@ public class InstantiateFloor : MonoBehaviour {
 	}
 
 	void Update(){
-		if (!pathFound) {
+		if (!pathFound && floorCreated) {
 			FindPath ();
 		}
 	}
@@ -39,7 +40,6 @@ public class InstantiateFloor : MonoBehaviour {
 		} else {
 			Camera.main.orthographicSize = (columns / 2) + 1;
 		}
-
 	}
 
 	private void CreateFloor(){
@@ -60,10 +60,11 @@ public class InstantiateFloor : MonoBehaviour {
 				currTile.pos = tile.transform.position;
 			}
 		}
+		floorCreated = true;
 	}
 
 	private void CreateStartEnd(){
-		int randomStart = Random.Range (0, rows);
+		//int randomStart = Random.Range (0, rows);
 		startTile = tileList [0];
 		targetTile = tileList [tileList.Count - 1];
 	}
@@ -145,7 +146,7 @@ public class InstantiateFloor : MonoBehaviour {
 
 	int GetDistance (Tile tileA, Tile tileB){
 
-		//Round all tile-positions to INTs
+		//Rond alle posities af naar INTs
 		int xPosA = Mathf.RoundToInt (tileA.pos.x);
 		int yPosA = Mathf.RoundToInt (tileA.pos.y);
 		int xPosB = Mathf.RoundToInt (tileB.pos.x);
