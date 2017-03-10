@@ -4,14 +4,11 @@ using UnityEngine;
 
 public class MoveCharacter : MonoBehaviour {
 
-
+	private InstantiateFloor f;
 
 	void Start () {
-		
-	}
-	
-	// Update is called once per frame
-	void Update () {
-		
+		f = FindObjectOfType<InstantiateFloor> ();
+
+		transform.position = f.startTile.pos;
 	}
 }

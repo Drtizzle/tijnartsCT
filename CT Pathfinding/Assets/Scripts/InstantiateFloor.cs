@@ -4,24 +4,42 @@ using UnityEngine;
 
 public class InstantiateFloor : MonoBehaviour {
 
-	public Sprite doorSprite;
-
+	public bool pathFound = false;
+	
 	public List<Tile> tileList = new List<Tile> ();
+
 	public Tile startTile;
 	public Tile targetTile;
 
 	public int rows, columns;					//Aantal rijen en kolommen die de vloer moet hebben
 
-	void Start () {
+	void Awake () {
+		CenterCamera ();
+		CreateFloor ();
+		CreateStartEnd ();
+	}
 
+	void Update(){
+		if (!pathFound) {
+			FindPath ();
+		}
+	}
+
+	private void CenterCamera(){
 		//Sla de z-positie van de camera op
 		float camPosZ = Camera.main.transform.position.z;
 
 		//Centreer de camera in verhouding tot de vloer
-		Camera.main.transform.position = new Vector3 (rows/2, columns/2, camPosZ);															
+		Camera.main.transform.position = new Vector3 (rows/2, columns/2, camPosZ);
 
-		CreateFloor ();
-		CreateStartEnd ();
+		//Pas de orthografische grootte aan, zodat de vloer in het beeld past
+		//Pak het grootste getal van de rijen of kolommen om de camera op aan te passen
+		if (rows > columns) {
+			Camera.main.orthographicSize = (rows / 2) + 1;
+		} else {
+			Camera.main.orthographicSize = (columns / 2) + 1;
+		}
+
 	}
 
 	private void CreateFloor(){
@@ -38,34 +56,108 @@ public class InstantiateFloor : MonoBehaviour {
 
 				//Voeg de tegel toe aan de lijst
 				tileList.Add (currTile);
+
+				currTile.pos = tile.transform.position;
 			}
 		}
 	}
 
 	private void CreateStartEnd(){
+		int randomStart = Random.Range (0, rows);
+		startTile = tileList [0];
+		targetTile = tileList [tileList.Count - 1];
+	}
 
-		int startPosX = Random.Range (0, rows);	//Genereer een random x-positie voor de startnode
-		int endPosX = Random.Range (0, rows);	//Genereer een random x-positie voor de eindnode
-		int endPosY = rows;						//Plaats de targetnode één rij boven de laatste rij
+	private void FindPath(){
 
-		//Instantiate de tegel en plaats het op de goede coordinaten
-		GameObject start = Instantiate(Resources.Load ("floor-tile"), new Vector3(startPosX, -1, 0), Quaternion.identity) as GameObject;
-		GameObject target = Instantiate(Resources.Load ("floor-tile"), new Vector3(endPosX, endPosY, 0), Quaternion.identity) as GameObject;
+		List<Tile> openSet = new List<Tile> ();
+		HashSet<Tile> closedSet = new HashSet<Tile> ();
 
-		//Maak het object waar dit script op zit de parent van de tegels
-		start.transform.parent = this.transform;
-		target.transform.parent = this.transform;
+		startTile.walkable = true;
+		targetTile.walkable = true;
 
-		//Neem het tile-component van de tegels
-		Tile startTile = start.GetComponent <Tile> ();
-		Tile targetTile = target.GetComponent <Tile> ();
+		openSet.Add (startTile);
 
-		//Voeg de tegels toe aan de lijst
-		tileList.Add (startTile);
-		tileList.Add (targetTile);
+		while (openSet.Count > 0) {
+			Tile currTile = openSet [0];
 
-		//Verander de sprite van de start en eind tile
-		start.GetComponent <SpriteRenderer> ().sprite = doorSprite;
-		target.GetComponent <SpriteRenderer> ().sprite = doorSprite;
+			for (int i = 1; i < openSet.Count; i++) {
+				if (openSet[i].fCost < currTile.fCost || openSet[i].fCost == currTile.fCost && openSet[i].hCost < currTile.hCost){
+					currTile = openSet [i];
+				}
+			}
+
+			openSet.Remove (currTile);
+			closedSet.Add (currTile);
+
+			if (currTile == targetTile) {
+				RetracePath (startTile, targetTile);
+				pathFound = true;
+				return;
+			}
+
+			foreach (Tile neighbour in currTile.neighbourTiles) {
+				if (!neighbour.walkable || closedSet.Contains (neighbour)) {
+					continue;
+				}
+
+				int newMovementCostToNeighbour = currTile.gCost + GetDistance (currTile, neighbour);
+
+				if (newMovementCostToNeighbour < neighbour.gCost || !openSet.Contains (neighbour)) {
+					neighbour.gCost = newMovementCostToNeighbour;
+					neighbour.hCost = GetDistance (neighbour, targetTile);
+					neighbour.parent = currTile;
+					neighbour.GetComponent <SpriteRenderer>().color = Color.yellow;
+
+					if (!openSet.Contains (neighbour)) {
+						openSet.Add (neighbour);
+					}
+				}
+			}
+		}
+	}
+
+	public List<Tile> calculatedPath;
+
+	void RetracePath(Tile start, Tile end){
+		List<Tile> path = new List<Tile>();
+		Tile currTile = end;
+
+		while (currTile != start) {
+			path.Add (currTile);
+			currTile = currTile.parent;
+		}
+
+		path.Reverse ();
+
+		calculatedPath = path;
+
+		if (tileList != null) {
+			foreach (Tile t in tileList){
+				if (calculatedPath != null){
+					if (calculatedPath.Contains (t)) {
+						t.GetComponent <SpriteRenderer>().color = Color.red;
+					}
+				}
+			}
+		}
+	}
+
+	int GetDistance (Tile tileA, Tile tileB){
+
+		//Round all tile-positions to INTs
+		int xPosA = Mathf.RoundToInt (tileA.pos.x);
+		int yPosA = Mathf.RoundToInt (tileA.pos.y);
+		int xPosB = Mathf.RoundToInt (tileB.pos.x);
+		int yPosB = Mathf.RoundToInt (tileB.pos.y);
+
+		int dstX = Mathf.Abs (xPosA - xPosB);
+		int dstY = Mathf.Abs (yPosA - yPosB);
+
+		if (dstX > dstY) {
+			return 14 * dstY + 10 * (dstX - dstY);
+		} else {
+			return 14 * dstX + 10 * (dstY - dstX);
+		}
 	}
 }
