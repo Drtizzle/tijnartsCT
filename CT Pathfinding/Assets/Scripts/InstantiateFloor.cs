@@ -1,48 +1,78 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class InstantiateFloor : MonoBehaviour {
 
-	private Transform rob;
-	private Transform frikandel;
+	public IEnumerator createFloor;
+
+	private int currIteration;
+
+	private Transform rob, friet, frikandel;
+
+	private Tile startTile, targetTile;
 
 	public bool floorCreated = false;
-	public bool pathFound = false;
-	
-	public List<Tile> tileList = new List<Tile> ();
 
-	public Tile startTile;
-	public Tile targetTile;
+	public QuickList<Tile> tileList = new QuickList<Tile> ();
+	public List<Tile> targetList = new List<Tile> ();
+	public List<Tile> calculatedPath;
+
+	public bool allPathsFound;
+	public List<bool> pathFoundList = new List<bool> ();
 
 	public int rows, columns;					//Aantal rijen en kolommen die de vloer moet hebben
+	public int tileCount;						//Totaal aantal tegels (rows * columns)
 
-	void Awake () {
+	[Header ("UI")]
+	public Slider loadingBar;
+	public Text loadingTxt;
+	public Text timerTxt;
+
+	void Start () {
+
+		createFloor = CreateFloor ();
+
 		rob = GameObject.Find ("rob").gameObject.transform;
+		friet = GameObject.Find ("friet").gameObject.transform;
 		frikandel = GameObject.Find ("frikandel").gameObject.transform;
-
-		CenterCamera ();
-		CreateFloor ();
-		AddNeighbourTiles ();
+		StartCoroutine (createFloor);
 	}
 
 	void Update(){
 		//Randomise the field again
 		if (Input.GetKeyDown (KeyCode.Space)) {
-			StopCoroutine(ColorPath ());
 			GenerateNewFloor ();
+		}
+
+		if (!floorCreated) {
+			timerTxt.text = CurrentTime ();
 		}
 	}
 
+	private string CurrentTime(){
+		return Time.unscaledTime.ToString ();
+	}
+
 	private void GenerateNewFloor(){
-		pathFound = false;
-		CreateStartEnd ();
+		//Set all pathfound bools to false
+		pathFoundList.Clear ();
+		currIteration = 0;
+		allPathsFound = false;
+
+		CreateStartAndTarget ();
 
 		foreach (Tile t in tileList) {
-			t.RandomizeWalkable ();
+			t.RandomizeIfWalkable ();
 		}
 
-		FindPath ();
+		for (int i = 0; i < targetList.Count - 1; i++) {
+			pathFoundList.Add (false);
+			FindPath (targetList[i], targetList[i + 1]);
+			print ("oi");
+		}
 	}
 
 	private void CenterCamera(){
@@ -61,14 +91,20 @@ public class InstantiateFloor : MonoBehaviour {
 		}
 	}
 
-	private void CreateFloor(){
+	private void InitLoadingBar(){
+		tileCount = rows * columns;
+		loadingBar.maxValue = tileCount;
+	}
+
+	private IEnumerator CreateFloor(){
+
+		InitLoadingBar ();
+
 		for (int y = 0; y < columns; y++) {
 			for (int x = 0; x < rows; x++) {
 				//Instantiate de tegel en plaats het op de goede coordinaten
-				GameObject tile = Instantiate(Resources.Load ("floor-tile"), new Vector3(x, y, 0), Quaternion.identity) as GameObject;
+				GameObject tile = Instantiate(Resources.Load ("floor-tile"), new Vector3(x, y, 0), Quaternion.identity, this.transform) as GameObject;
 
-				//Maak het object waar dit script op zit de parent van de tegel
-				tile.transform.parent = this.transform;
 
 				//Neem het tile-component van de tegel
 				Tile currTile = tile.GetComponent <Tile> ();
@@ -76,12 +112,24 @@ public class InstantiateFloor : MonoBehaviour {
 				//Voeg de tegel toe aan de lijst
 				tileList.Add (currTile);
 
-				currTile.index = tileList.IndexOf (currTile);
 				currTile.pos = new Vector2 (x, y);
+				currTile.index = tileList.IndexOf (currTile);
+
+				loadingBar.value = tileList.Count;
+				loadingTxt.text = tileList.Count.ToString ();
+				yield return null;
 			}
+		
 		}
 
+		print ("Tile Spawned " + CurrentTime ());
+
 		floorCreated = true;
+		loadingBar.gameObject.SetActive (false);
+
+		CenterCamera ();
+
+		AddNeighbourTiles ();
 	}
 
 	private void AddNeighbourTiles(){
@@ -107,30 +155,47 @@ public class InstantiateFloor : MonoBehaviour {
 				t.neighbourTiles.Add (tileList [t.index - 1]); 
 			}
 		}
+
+		print ("Neighbours added");
+		print ("Done");
 	}
 
-	private void CreateStartEnd(){
-		int randomTarget = Random.Range (1, tileList.Count - 1);
+	private void CreateStartAndTarget(){
 
+		targetList.Clear ();
+		calculatedPath.Clear ();
+		friet.SetParent (null);
+		
 		if (targetTile != null) {
-			targetTile.sr.color = Color.white;
+			targetTile.SetWalkable ();
 		}
 
+		//The start-tile is the first tile in the tilelist
 		startTile = tileList [0];
+		targetList.Add (startTile);
+
+		//Add inbetween target
+		int randomInbetween = Random.Range (1, tileList.Count - 1);
+		targetList.Add (tileList [randomInbetween]);
+
+		//The target-tile is the last tile in the tilelist
+		int randomTarget = Random.Range ((rows * columns) - rows , tileList.Count - 1);
 		targetTile = tileList [randomTarget];
+		targetList.Add (targetTile);
 
 		rob.position = startTile.transform.position;
+		friet.position = targetList[1].transform.position;
 		frikandel.position = targetTile.transform.position;
 	}
 
-	private void FindPath(){
+	private void FindPath(Tile start, Tile end){
 		List<Tile> openSet = new List<Tile> ();
 		HashSet<Tile> closedSet = new HashSet<Tile> ();
 
-		startTile.walkable = true;
-		targetTile.walkable = true;
+		start.walkable = true;
+		end.walkable = true;
 
-		openSet.Add (startTile);
+		openSet.Add (start);
 
 		while (openSet.Count > 0) {
 			Tile currTile = openSet [0];
@@ -144,9 +209,22 @@ public class InstantiateFloor : MonoBehaviour {
 			openSet.Remove (currTile);
 			closedSet.Add (currTile);
 
-			if (currTile == targetTile) {
-				RetracePath (startTile, targetTile);
-				pathFound = true;
+			if (currTile == end) {
+				pathFoundList [currIteration] = true;
+				currIteration++;
+
+				for (int i = 0; i < pathFoundList.Count; i++) {
+					if (pathFoundList [i] == false) {
+						allPathsFound = false;
+						i = 0;
+					} else {
+						allPathsFound = true;
+					}
+				}
+
+				if (allPathsFound) {
+					RetracePath (start, end);
+				}
 				return;
 			}
 				
@@ -159,9 +237,9 @@ public class InstantiateFloor : MonoBehaviour {
 
 				if (newMovementCostToNeighbour < neighbour.gCost || !openSet.Contains (neighbour)) {
 					neighbour.gCost = newMovementCostToNeighbour;
-					neighbour.hCost = GetDistance (neighbour, targetTile);
+					neighbour.hCost = GetDistance (neighbour, end);
 					neighbour.parent = currTile;
-					neighbour.sr.color = Color.yellow;
+					//neighbour.sr.color = Color.yellow;
 						
 					if (!openSet.Contains (neighbour)) {
 						openSet.Add (neighbour);
@@ -170,15 +248,14 @@ public class InstantiateFloor : MonoBehaviour {
 			}
 		}
 
-		if (openSet.Count == 0 && !pathFound) {
+		//Als er geen pad gevonden kan worden, genereer een nieuw doolhof
+		if (openSet.Count == 0 && !allPathsFound) {
 			foreach (Tile t in tileList) {
-				t.RandomizeWalkable ();
+				t.RandomizeIfWalkable ();
 			}
-			FindPath ();
+			FindPath (start, end);
 		}
 	}
-		
-	public List<Tile> calculatedPath;
 
 	void RetracePath(Tile start, Tile end){
 		List<Tile> path = new List<Tile>();
@@ -193,8 +270,10 @@ public class InstantiateFloor : MonoBehaviour {
 
 		path.Reverse ();
 
-		calculatedPath = path;
-
+		for (int i = 0; i < path.Count; i++) {
+			calculatedPath.Add (path [i]);
+		}
+			
 		if (tileList != null) {
 			StartCoroutine (ColorPath ());
 		}
@@ -204,15 +283,27 @@ public class InstantiateFloor : MonoBehaviour {
 
 		float waitTime = 2.0F / calculatedPath.Count;
 
-		startTile.sr.color = Color.red;
-		targetTile.sr.color = Color.green;
+		targetList [0].sr.color = Color.red;
+		targetList [targetList.Count - 1].sr.color = Color.green;
 
-		frikandel.position = targetTile.transform.position;
+		for (int i = 1; i < targetList.Count - 1; i++) {
+			targetList [i].sr.color = Color.blue;
+		}
 
 		for (int i = 0; i < calculatedPath.Count; i++) {
 			calculatedPath [i].sr.color = Color.red;
 			rob.position = calculatedPath [i].transform.position;
 			yield return new WaitForSeconds(waitTime);
+
+			if (rob.position == friet.transform.position) {
+				friet.SetParent (rob);
+			}
+
+			//Als het doolhof is gereset, lopen Rob en het pad niet meer gelijk.
+			//Break dan uit de for-loop
+			if (rob.position != calculatedPath [i].transform.position){
+				break;
+			}
 		}
 	}
 

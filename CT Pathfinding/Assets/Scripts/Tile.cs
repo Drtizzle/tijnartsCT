@@ -11,23 +11,33 @@ public class Tile : MonoBehaviour {
 
 	public List<Tile> neighbourTiles = new List<Tile> ();
 
-	public bool walkable = true;
+	public bool walkable;
 
 	public int gCost;										//Afstand van startpunt tot deze tegel
 	public int hCost;										//Afstand naar eindpunt van deze tegel
 
 	public Tile parent;
 
-	public void RandomizeWalkable(){
+	public void RandomizeIfWalkable(){
 		int randomWalkable = Random.Range (0, 100);
 
 		if (randomWalkable < 60) {
-			walkable = true;
-			sr.color = Color.white;
+			SetWalkable ();
 		} else {
-			walkable = false;
-			sr.color = Color.black;
+			SetUnwalkable ();
 		}
+	}
+
+	public void SetWalkable(){
+		walkable = true;
+		sr.color = Color.white;
+		//sr.enabled = false;
+	}
+
+	public void SetUnwalkable(){
+		walkable = false;
+		sr.color = Color.black;
+		//sr.enabled = true;
 	}
 
 	public int fCost {
