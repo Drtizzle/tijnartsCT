@@ -21,7 +21,7 @@ public class Tile : MonoBehaviour {
 	public void RandomizeIfWalkable(){
 		int randomWalkable = Random.Range (0, 100);
 
-		if (randomWalkable < 60) {
+		if (randomWalkable < 65) {
 			SetWalkable ();
 		} else {
 			SetUnwalkable ();

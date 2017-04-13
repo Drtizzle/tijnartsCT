@@ -6,6 +6,8 @@ using UnityEngine.UI;
 
 public class InstantiateFloor : MonoBehaviour {
 
+	private WriteFloorImage wfi;
+
 	public IEnumerator createFloor;
 
 	private int currIteration;
@@ -16,7 +18,7 @@ public class InstantiateFloor : MonoBehaviour {
 
 	public bool floorCreated = false;
 
-	public QuickList<Tile> tileList = new QuickList<Tile> ();
+	public Tile[] tileList;
 	public List<Tile> targetList = new List<Tile> ();
 	public List<Tile> calculatedPath;
 
@@ -33,6 +35,8 @@ public class InstantiateFloor : MonoBehaviour {
 
 	void Start () {
 
+		wfi = FindObjectOfType<WriteFloorImage> ();
+
 		createFloor = CreateFloor ();
 
 		rob = GameObject.Find ("rob").gameObject.transform;
@@ -44,7 +48,8 @@ public class InstantiateFloor : MonoBehaviour {
 	void Update(){
 		//Randomise the field again
 		if (Input.GetKeyDown (KeyCode.Space)) {
-			GenerateNewFloor ();
+			timerTxt.text = ""; 
+			StartCoroutine (GenerateNewFloor ()); 
 		}
 
 		if (!floorCreated) {
@@ -56,7 +61,7 @@ public class InstantiateFloor : MonoBehaviour {
 		return Time.unscaledTime.ToString ();
 	}
 
-	private void GenerateNewFloor(){
+	private IEnumerator GenerateNewFloor(){
 		//Set all pathfound bools to false
 		pathFoundList.Clear ();
 		currIteration = 0;
@@ -71,7 +76,7 @@ public class InstantiateFloor : MonoBehaviour {
 		for (int i = 0; i < targetList.Count - 1; i++) {
 			pathFoundList.Add (false);
 			FindPath (targetList[i], targetList[i + 1]);
-			print ("oi");
+			yield return null;
 		}
 	}
 
@@ -100,34 +105,46 @@ public class InstantiateFloor : MonoBehaviour {
 
 		InitLoadingBar ();
 
-		for (int y = 0; y < columns; y++) {
-			for (int x = 0; x < rows; x++) {
+		for (int y = 0; y < rows; y++) {
+			for (int x = 0; x < columns; x++) {
 				//Instantiate de tegel en plaats het op de goede coordinaten
 				GameObject tile = Instantiate(Resources.Load ("floor-tile"), new Vector3(x, y, 0), Quaternion.identity, this.transform) as GameObject;
 
+				int currTileIndex = x * y;
 
 				//Neem het tile-component van de tegel
 				Tile currTile = tile.GetComponent <Tile> ();
 
-				//Voeg de tegel toe aan de lijst
-				tileList.Add (currTile);
-
 				currTile.pos = new Vector2 (x, y);
-				currTile.index = tileList.IndexOf (currTile);
 
-				loadingBar.value = tileList.Count;
-				loadingTxt.text = tileList.Count.ToString ();
-				yield return null;
+				loadingBar.value = currTileIndex;
+				loadingTxt.text = currTileIndex.ToString ();
 			}
-		
+
+			yield return null;
 		}
 
-		print ("Tile Spawned " + CurrentTime ());
-
-		floorCreated = true;
+		StartCoroutine (FindTiles ());
 		loadingBar.gameObject.SetActive (false);
+	}
 
-		CenterCamera ();
+	private IEnumerator FindTiles(){
+		while (tileList.Length == 0) {
+			tileList = FindObjectsOfType <Tile> ();
+			yield return null;
+		}
+
+		StartCoroutine (SetTileIndex ());
+	}
+
+	private IEnumerator SetTileIndex(){
+
+		for (int i = 0; i < tileList.Length; i++) {
+			tileList [i].index = i;
+
+		}
+		yield return null;
+		floorCreated = true;
 
 		AddNeighbourTiles ();
 	}
@@ -136,12 +153,12 @@ public class InstantiateFloor : MonoBehaviour {
 
 		foreach (Tile t in tileList) {
 			//Northtile
-			if (t.index + rows < tileList.Count) {
+			if (t.index + rows < tileList.Length) {
 				t.neighbourTiles.Add (tileList [t.index + rows]);
 			}
 
 			//Easttile
-			if (t.index + 1 < tileList.Count && tileList [t.index + 1].pos.y == t.pos.y) {
+			if (t.index + 1 < tileList.Length && tileList [t.index + 1].pos.y == t.pos.y) {
 				t.neighbourTiles.Add (tileList [t.index + 1]); 
 			}
 
@@ -156,8 +173,8 @@ public class InstantiateFloor : MonoBehaviour {
 			}
 		}
 
-		print ("Neighbours added");
-		print ("Done");
+		CenterCamera ();
+		print (CurrentTime ());
 	}
 
 	private void CreateStartAndTarget(){
@@ -175,11 +192,11 @@ public class InstantiateFloor : MonoBehaviour {
 		targetList.Add (startTile);
 
 		//Add inbetween target
-		int randomInbetween = Random.Range (1, tileList.Count - 1);
+		int randomInbetween = Random.Range (1, tileList.Length - 1);
 		targetList.Add (tileList [randomInbetween]);
 
 		//The target-tile is the last tile in the tilelist
-		int randomTarget = Random.Range ((rows * columns) - rows , tileList.Count - 1);
+		int randomTarget = Random.Range ((rows * columns) - rows , tileList.Length - 1);
 		targetTile = tileList [randomTarget];
 		targetList.Add (targetTile);
 
@@ -189,6 +206,7 @@ public class InstantiateFloor : MonoBehaviour {
 	}
 
 	private void FindPath(Tile start, Tile end){
+
 		List<Tile> openSet = new List<Tile> ();
 		HashSet<Tile> closedSet = new HashSet<Tile> ();
 
@@ -246,6 +264,7 @@ public class InstantiateFloor : MonoBehaviour {
 					}
 				}
 			}
+			//wfi.WriteImage ();
 		}
 
 		//Als er geen pad gevonden kan worden, genereer een nieuw doolhof
@@ -279,7 +298,7 @@ public class InstantiateFloor : MonoBehaviour {
 		}
 	}
 
-	IEnumerator ColorPath(){
+	private IEnumerator ColorPath(){
 
 		float waitTime = 2.0F / calculatedPath.Count;
 

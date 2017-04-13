@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 public class ArrayTest : MonoBehaviour {
 
-	private int currX, currY;
+	private bool floorInitialised;
 
 	public int columns, rows;
 
@@ -21,18 +21,13 @@ public class ArrayTest : MonoBehaviour {
 
 		loadingBar.maxValue = columns * rows;
 
+		StartCoroutine (CheckTime ());
 		StartCoroutine (CreateFloor ());
 	}
 
 	private IEnumerator CreateFloor(){
 		for (int y = 0; y < columns; y++) {
-
-			currY = y;
-
 			for (int x = 0; x < rows; x++) {
-
-				currX = x;
-
 				//Instantiate de tegel en plaats het op de goede coordinaten
 				GameObject tile = Instantiate(Resources.Load ("floor-tile"), new Vector3(x, y, 0), Quaternion.identity, this.transform) as GameObject;
 
@@ -45,7 +40,6 @@ public class ArrayTest : MonoBehaviour {
 
 				loadingBar.value = currTileIndex;
 				loadingText.text = currTileIndex.ToString ();
-				timerText.text = CurrentTime ();
 			}
 
 			yield return null;
@@ -56,8 +50,9 @@ public class ArrayTest : MonoBehaviour {
 	}
 
 	private IEnumerator FindTiles(){
-		tileList = FindObjectsOfType <Tile> ();
 		while (tileList.Length == 0) {
+			tileList = FindObjectsOfType <Tile> ();
+			print ("oi");
 			yield return null;
 		}
 
@@ -68,9 +63,18 @@ public class ArrayTest : MonoBehaviour {
 		
 		for (int i = 0; i < tileList.Length; i++) {
 			tileList [i].index = i;
+
 		}
 		yield return null;
-		print (CurrentTime ());
+		floorInitialised = true;
+	}
+
+	private IEnumerator CheckTime(){
+		while(!floorInitialised){
+			timerText.text = CurrentTime ();
+			yield return null;
+		}
+
 	}
 
 	private void CenterCamera(){

@@ -19,3 +19,5 @@
 /Users/tijnarts/Documents/Repositories/tijnartsCT/CT Pathfinding/Temp/bin/Debug/Unity.CecilTools.dll
 /Users/tijnarts/Documents/Repositories/tijnartsCT/CT Pathfinding/Temp/bin/Debug/Mono.Cecil.Pdb.dll
 /Users/tijnarts/Documents/Repositories/tijnartsCT/CT Pathfinding/Temp/bin/Debug/Mono.Cecil.Mdb.dll
+/Users/tijnarts/Documents/Repositories/tijnartsCT/CT Pathfinding/Temp/bin/Debug/UnityEngine.TestRunner.dll
+/Users/tijnarts/Documents/Repositories/tijnartsCT/CT Pathfinding/Temp/bin/Debug/nunit.framework.dll
