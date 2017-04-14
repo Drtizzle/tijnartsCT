@@ -70,6 +70,8 @@ public class InstantiateFloor : MonoBehaviour {
 		CreateStartAndTarget ();
 
 		foreach (Tile t in tileList) {
+			t.sr.color = new Color32 (255, 0, 0, 128);
+			t.sr.enabled = false;
 			t.RandomizeIfWalkable ();
 		}
 
@@ -104,6 +106,7 @@ public class InstantiateFloor : MonoBehaviour {
 	private IEnumerator CreateFloor(){
 
 		InitLoadingBar ();
+		wfi.WriteImage ();
 
 		for (int y = 0; y < rows; y++) {
 			for (int x = 0; x < columns; x++) {
@@ -141,10 +144,8 @@ public class InstantiateFloor : MonoBehaviour {
 
 		for (int i = 0; i < tileList.Length; i++) {
 			tileList [i].index = i;
-
 		}
 		yield return null;
-		floorCreated = true;
 
 		AddNeighbourTiles ();
 	}
@@ -264,15 +265,16 @@ public class InstantiateFloor : MonoBehaviour {
 					}
 				}
 			}
-			//wfi.WriteImage ();
 		}
 
 		//Als er geen pad gevonden kan worden, genereer een nieuw doolhof
-		if (openSet.Count == 0 && !allPathsFound) {
-			foreach (Tile t in tileList) {
-				t.RandomizeIfWalkable ();
+		if (openSet.Count == 0) {
+			if (!pathFoundList [0] || !pathFoundList [1]) {
+				foreach (Tile t in tileList) {
+					t.RandomizeIfWalkable ();
+				}
+				FindPath (start, end);
 			}
-			FindPath (start, end);
 		}
 	}
 
@@ -292,17 +294,21 @@ public class InstantiateFloor : MonoBehaviour {
 		for (int i = 0; i < path.Count; i++) {
 			calculatedPath.Add (path [i]);
 		}
-			
-		if (tileList != null) {
+
+		if (tileList != null && floorCreated) {
 			StartCoroutine (ColorPath ());
 		}
 	}
 
 	private IEnumerator ColorPath(){
 
+		wfi.WriteImage ();
+
+		print (calculatedPath.Count);
+
 		float waitTime = 2.0F / calculatedPath.Count;
 
-		targetList [0].sr.color = Color.red;
+		//targetList [0].sr.color = Color.red;
 		targetList [targetList.Count - 1].sr.color = Color.green;
 
 		for (int i = 1; i < targetList.Count - 1; i++) {
@@ -310,7 +316,8 @@ public class InstantiateFloor : MonoBehaviour {
 		}
 
 		for (int i = 0; i < calculatedPath.Count; i++) {
-			calculatedPath [i].sr.color = Color.red;
+			calculatedPath [i].sr.enabled = true;
+			//calculatedPath [i].sr.color = Color.red;
 			rob.position = calculatedPath [i].transform.position;
 			yield return new WaitForSeconds(waitTime);
 
