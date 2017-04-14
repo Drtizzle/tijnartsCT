@@ -87,11 +87,9 @@
 -define:ENABLE_NATIVE_ARRAY_CHECKS
 -define:UNITY_TEAM_LICENSE
 -define:UNITY_PRO_LICENSE
-'Assets/Scripts/ArrayTest.cs'
+'Assets/Scripts/CreatePath.cs'
 'Assets/Scripts/GameManager.cs'
-'Assets/Scripts/Heap.cs'
 'Assets/Scripts/InstantiateFloor.cs'
-'Assets/Scripts/QuickList.cs'
 'Assets/Scripts/Tile.cs'
 'Assets/Scripts/WriteFloorImage.cs'
 -r:'/Applications/Unity/Unity.app/Contents/Mono/lib/mono/unity/System.Runtime.Serialization.dll'
