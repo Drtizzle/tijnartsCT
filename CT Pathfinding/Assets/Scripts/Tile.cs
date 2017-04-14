@@ -30,13 +30,13 @@ public class Tile : MonoBehaviour {
 
 	public void SetWalkable(){
 		walkable = true;
-		//sr.color = Color.white;
+		sr.color = Color.white;
 		//sr.enabled = false;
 	}
 
 	public void SetUnwalkable(){
 		walkable = false;
-		//sr.color = Color.black;
+		sr.color = Color.black;
 		//sr.enabled = true;
 	}
 
