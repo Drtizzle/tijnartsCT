@@ -4,7 +4,8 @@ using UnityEngine;
 
 public class CreatePath : MonoBehaviour {
 
-	// Use this for initialization
+	//TEST
+
 	void Start () {
 		
 	}
